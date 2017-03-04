@@ -31,7 +31,10 @@ import math
 
 
 def new_weights(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.05))
+    fan_in, fan_out= shape[0], shape[1]
+    low = -4*np.sqrt(6.0/(fan_in + fan_out)) # use 4 for sigmoid, 1 for tanh activation 
+    high = 4*np.sqrt(6.0/(fan_in + fan_out))
+    return tf.Variable(tf.random_uniform(shape, minval=low, maxval=high, dtype=tf.float32))
 def new_biases(length):
     #equivalent to y intercept
     #constant value carried over across matrix math
@@ -140,7 +143,7 @@ inputs = idx2numpy.convert_from_file(r'C:\Users\Ronak\Desktop\Important\machine-
 labels = idx2numpy.convert_from_file(r'C:\Users\Ronak\Desktop\Important\machine-learning-master\projects\digit_recognition\train-labels.idx1-ubyte')
 
 
-dataset_size = 2000# just for initial stages
+dataset_size = 500# just for initial stages
 image_height = 28
 image_width = 140
 dataset = np.ndarray(shape=(dataset_size, image_height, image_width),
@@ -232,9 +235,9 @@ def neural_network_model(data,keep_prob,shape):
                    use_pooling=True)
         
     reshape, num_hidden = flatten_layer(layer_conv2)
-    layer3= new_fc_layer(reshape,num_hidden,20)
+    layer3= new_fc_layer(reshape,num_hidden,140)
     hidden = tf.nn.dropout(layer3, keep_prob)
-    num_hidden=20
+    num_hidden=140
     logits1 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
     logits2 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
     logits3 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
