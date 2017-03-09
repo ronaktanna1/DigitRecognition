@@ -249,9 +249,9 @@ def neural_network_model(data,keep_prob,shape):
                    use_pooling=True)
         
     reshape, num_hidden = flatten_layer(layer_conv2)
-    layer3= new_fc_layer(reshape,num_hidden,50)
+    layer3= new_fc_layer(reshape,num_hidden,500)
     hidden = tf.nn.dropout(layer3, keep_prob)
-    num_hidden=50
+    num_hidden=500
     logits1 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
     logits2 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
     logits3 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
@@ -301,8 +301,8 @@ def train_neural_network(x):
             pred2= test_prediction.eval()
             pred2= [list(tf.argmax(pred2[:,i,:],1).eval()) for i in range(len(y_test))]
             pred2= np.array(pred2).astype(dtype=np.float32)
-            print (pred)
-            print (pred2)
+#            print (pred)
+#            print (pred2)
             if (step % 5 == 0): 
                 print('Minibatch loss at step %d: %f' % (step, l))
                 print('Minibatch accuracy: %.1f%%' % accuracy(pred, labels, batch_size))
