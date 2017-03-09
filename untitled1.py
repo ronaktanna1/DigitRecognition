@@ -30,6 +30,7 @@ from datetime import timedelta
 import math
 
 
+
 def new_weights(shape):
     fan_in, fan_out= shape[0], shape[1]
     low = -4*np.sqrt(6.0/(fan_in + fan_out)) # use 4 for sigmoid, 1 for tanh activation 
@@ -134,13 +135,23 @@ def gaussian_filter(kernel_shape):
 def gauss(x, y, sigma=3.0):
     Z = 2 * np.pi * sigma ** 2
     return  1. / Z * np.exp(-(x ** 2 + y ** 2) / (2. * sigma ** 2))
-
+'''
 def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 2).T == labels) / predictions.shape[1] / predictions.shape[0])
-
+'''
+'''
+def accuracy(predictions,labels):
+    return tf.reduce_mean(tf.cast(tf.equal(predictions, labels), tf.float32))
+'''
 #mnist = input_data.read_data_sets("/tmp/data/", one_hot = True)
 inputs = idx2numpy.convert_from_file(r'C:\Users\Ronak\Desktop\Important\machine-learning-master\projects\digit_recognition\train-images.idx3-ubyte')
 labels = idx2numpy.convert_from_file(r'C:\Users\Ronak\Desktop\Important\machine-learning-master\projects\digit_recognition\train-labels.idx1-ubyte')
+
+def accuracy(predictions, labels, batch_size):
+    pred = [''.join(np.array(i, dtype = int).astype(str)) for i in predictions]
+    lab = [''.join(np.array(i, dtype = int).astype(str)) for i in labels]
+    correct = sum([np.array(lab[i]==pred[i]).astype(int) for i in range(len(lab))])/float(batch_size)
+    return correct*100
 
 
 dataset_size = 500# just for initial stages
@@ -148,34 +159,36 @@ image_height = 28
 image_width = 140
 dataset = np.ndarray(shape=(dataset_size, image_height, image_width),
                          dtype=np.float32)
-print ("dataset:",dataset.shape)
+#print ("dataset:",dataset.shape)
 data_labels = []#one-hot labels
 data_labels_2=[]#integer labels for display etc
 i = 0
 w = 0
-print ("labels from idx2numpy:",labels.shape)
-print ("sample label from idx2numpy:",labels[0])
+#print ("labels from idx2numpy:",labels.shape)
+#print ("sample label from idx2numpy:",labels[0])
 # need to convert labels to one-hot
 
 lb = preprocessing.LabelBinarizer()
 labels_new = lb.fit_transform(labels)
-print ("labels from converting idx2numpy to one-hot:",labels_new.shape)
-print ("sample label from idx2numpy after conversion to one-hot:",labels_new[0])
+#print ("labels from converting idx2numpy to one-hot:",labels_new.shape)
+#print ("sample label from idx2numpy after conversion to one-hot:",labels_new[0])
 while i < dataset_size:
     temp1 = np.hstack([inputs[w], inputs[w + 1], inputs[w + 2], inputs[w + 3], inputs[w + 4]])
     dataset[i, :, :] = temp1
     data_labels.append((labels_new[w], labels_new[w + 1], labels_new[w + 2], labels_new[w + 3], labels_new[w + 4]))
-    data_labels_2.append((labels[w], labels[w + 1], labels[w + 2], labels[w + 3], labels[w + 4]))
-    if i==0:
-        print("One input's shape after concatenation:",temp1.shape)
-        print("Corresponding label after concatenation:",data_labels[0])
+#    data_labels_2.append(list(labels[w], labels[w + 1], labels[w + 2], labels[w + 3], labels[w + 4]))
+    lab= [labels[j] for j in range(w,w+5)]
+    data_labels_2.append(lab)
+#    if i==0:
+#        print("One input's shape after concatenation:",temp1.shape)
+#        print("Corresponding label after concatenation:",data_labels[0])
     w += 5
     i += 1
-print ("datatype of labels:",type(data_labels))
+#print ("datatype of labels:",type(data_labels))
 #to convert data_labels from list to array type
 
 data_labels=array(data_labels)
-print ("datatype of labels after conversion:",type(data_labels))
+#print ("datatype of labels after conversion:",type(data_labels))
 
 def displaySequence(n):
     fig=plt.figure()
@@ -185,9 +198,10 @@ def displaySequence(n):
 displaySequence(random.randint(0, dataset_size))
 
 
-y = np.asarray(data_labels_2)
+y = data_labels_2
 X = dataset
 X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.4)
+
 print(data_labels[0,1])
 displaySequence(0)
 
@@ -235,9 +249,9 @@ def neural_network_model(data,keep_prob,shape):
                    use_pooling=True)
         
     reshape, num_hidden = flatten_layer(layer_conv2)
-    layer3= new_fc_layer(reshape,num_hidden,140)
+    layer3= new_fc_layer(reshape,num_hidden,50)
     hidden = tf.nn.dropout(layer3, keep_prob)
-    num_hidden=140
+    num_hidden=50
     logits1 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
     logits2 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
     logits3 = new_fc_layer(hidden,num_hidden,num_labels,use_relu=True)
@@ -256,35 +270,42 @@ def train_neural_network(x):
     tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits4, tf_train_labels[:,3])) +\
     tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits5, tf_train_labels[:,4]))
     global_step = tf.Variable(0)
-#    learning_rate = tf.train.exponential_decay(0.05, global_step, 10000, 0.95)
-    optimizer = tf.train.AdagradOptimizer(0.001).minimize(loss, global_step=global_step)
+    learning_rate = tf.train.exponential_decay(0.05, global_step, 10000, 0.95)
+    optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step)
     num_steps = 10001
-    train_prediction=tf.pack([tf.nn.softmax(neural_network_model(tf_train_dataset,1.0, shape)[0]),\
-                            tf.nn.softmax(neural_network_model(tf_train_dataset,1.0, shape)[1]),\
-                            tf.nn.softmax(neural_network_model(tf_train_dataset, 1.0,shape)[2]),\
-                            tf.nn.softmax(neural_network_model(tf_train_dataset, 1.0,shape)[3]),\
-                            tf.nn.softmax(neural_network_model(tf_train_dataset, 1.0,shape)[4])])
-    test_prediction=tf.pack([tf.nn.softmax(neural_network_model(tf_test_dataset, 1.0,shape)[0]),\
-                            tf.nn.softmax(neural_network_model(tf_test_dataset,  1.0,shape)[1]),\
-                            tf.nn.softmax(neural_network_model(tf_test_dataset,  1.0,shape)[2]),\
-                            tf.nn.softmax(neural_network_model(tf_test_dataset,  1.0,shape)[3]),\
-                            tf.nn.softmax(neural_network_model(tf_test_dataset,  1.0,shape)[4])])
+    train_prediction=tf.pack([tf.nn.softmax(neural_network_model(tf_train_dataset,1.0,shape)[0]),\
+                            tf.nn.softmax(neural_network_model(tf_train_dataset,1.0,shape)[1]),\
+                            tf.nn.softmax(neural_network_model(tf_train_dataset,1.0,shape)[2]),\
+                            tf.nn.softmax(neural_network_model(tf_train_dataset,1.0,shape)[3]),\
+                            tf.nn.softmax(neural_network_model(tf_train_dataset,1.0,shape)[4])])
+    test_prediction=tf.pack([tf.nn.softmax(neural_network_model(tf_test_dataset,1.0,shape)[0]),\
+                            tf.nn.softmax(neural_network_model(tf_test_dataset, 1.0,shape)[1]),\
+                            tf.nn.softmax(neural_network_model(tf_test_dataset, 1.0,shape)[2]),\
+                            tf.nn.softmax(neural_network_model(tf_test_dataset, 1.0,shape)[3]),\
+                            tf.nn.softmax(neural_network_model(tf_test_dataset, 1.0,shape)[4])])
     with tf.Session() as session:
         tf.global_variables_initializer().run()  
         print('Initialized')
         for step in range(num_steps):
-            offset = (step * batch_size) % (y_train.shape[0] - batch_size)
+            offset = (step * batch_size) % (len(y_train) - batch_size)
             batch_data = X_train[offset:(offset + batch_size), :, :]
             batch_data= np.reshape(batch_data, (64,28,140,1))
-            batch_labels = y_train[offset:(offset + batch_size),:]
+            batch_labels = y_train[offset:(offset + batch_size)][:]
             feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
             _, l, predictions = session.run(
                     [optimizer, loss, train_prediction], feed_dict=feed_dict)
-#            print (predictions[step], batch_labels[step,:5])
+            pred= [list(tf.argmax(predictions[:,i,:],1).eval()) for i in range(batch_size)]
+            labels = np.array(batch_labels).astype(dtype=np.float32)
+            pred = np.array(pred).astype(dtype=np.float32)
+            y_test2 = np.array(y_test).astype(dtype=np.float32)
+            pred2= test_prediction.eval()
+            pred2= [list(tf.argmax(pred2[:,i,:],1).eval()) for i in range(len(y_test))]
+            pred2= np.array(pred2).astype(dtype=np.float32)
+            print (pred)
+            print (pred2)
             if (step % 5 == 0): 
                 print('Minibatch loss at step %d: %f' % (step, l))
-                print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels[:,:5]))
-                print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), y_test[:,:5]))
+                print('Minibatch accuracy: %.1f%%' % accuracy(pred, labels, batch_size))
+                print('Test accuracy: %.1f%%' % accuracy(pred2, y_test2,len(y_test2)))
     
-
 train_neural_network(X_train)
